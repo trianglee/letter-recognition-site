@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>צלילי אותיות עבריות</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card2: #273449;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --good: #22c55e;
+    --bad: #ef4444;
+    --gold: #fbbf24;
+  }
+  * { box-sizing: border-box; touch-action: pan-x pan-y; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at top, #1e293b, #0b1120 70%);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    padding: clamp(8px, 2vh, 20px) 16px;
+  }
+  .app { width: 100%; max-width: 520px; max-height: 100%; display: flex; flex-direction: column; }
+  header { flex: none; display: flex; justify-content: space-between; align-items: center; margin-bottom: clamp(8px, 1.8vh, 18px); }
+  h1 { font-size: 1.15rem; margin: 0; letter-spacing: .3px; }
+  .stats { display: flex; gap: 14px; font-size: .85rem; color: var(--muted); }
+  .stats b { color: var(--text); }
+  .panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid #334155;
+    border-radius: 18px;
+    padding: clamp(12px, 2.6vh, 26px) clamp(16px, 3vw, 22px);
+    box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  }
+  .prompt { flex: none; text-align: center; color: var(--muted); font-size: .9rem; margin-bottom: 6px; }
+  .letter {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: min(8rem, 18vh);
+    line-height: 1;
+    font-family: "Times New Roman", "David", serif;
+    margin: clamp(0px, 1vh, 4px) 0 clamp(8px, 2vh, 22px);
+    user-select: none;
+  }
+  .options { display: grid; gap: clamp(8px, 1.6vh, 12px); }
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: clamp(10px, 1.9vh, 16px) 18px;
+    font-size: 1.05rem;
+    color: var(--text);
+    background: var(--card2);
+    border: 2px solid #3b4a63;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform .08s ease, border-color .15s ease, background .15s ease;
+  }
+  .option:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  .option:disabled { cursor: default; }
+  .option.selected { border-color: var(--accent); background: #2f4462; }
+  .option.correct { border-color: var(--good); background: rgba(34,197,94,.18); }
+  .option.wrong { border-color: var(--bad); background: rgba(239,68,68,.16); }
+  .opt-label { flex: 1; text-align: right; }
+  .play-badge {
+    width: 34px; height: 34px; flex: none;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: #0f1a2e;
+    color: var(--accent);
+  }
+  .option.selected .play-badge { background: var(--accent); color: #0b1120; }
+  .actions { flex: none; margin-top: clamp(10px, 2vh, 20px); display: flex; gap: 12px; }
+  button.primary {
+    flex: 1;
+    padding: clamp(10px, 1.8vh, 14px);
+    font-size: 1rem;
+    font-weight: 600;
+    color: #06121f;
+    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: filter .15s ease, opacity .15s ease;
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.1); }
+  button.primary:disabled { opacity: .45; cursor: default; }
+  .feedback {
+    flex: none;
+    margin-top: clamp(8px, 1.8vh, 16px);
+    min-height: 24px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .feedback.good { color: var(--good); }
+  .feedback.bad { color: var(--bad); }
+  .praise {
+    flex: none;
+    margin-top: clamp(4px, 1.2vh, 10px);
+    min-height: 26px;
+    text-align: center;
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 1.05rem;
+    opacity: 0;
+  }
+  .praise.show { animation: pop 1.6s ease; }
+  .icon-screen {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 78vmin;
+    line-height: 1;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 50;
+    user-select: none;
+  }
+  .icon-screen.show { animation: iconpop 1.8s ease; }
+  @keyframes iconpop {
+    0% { opacity: 0; transform: scale(.2) rotate(-12deg); }
+    15% { opacity: 1; transform: scale(1.1) rotate(6deg); }
+    30% { transform: scale(1) rotate(0deg); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.5) rotate(12deg); }
+  }
+  @keyframes pop {
+    0% { opacity: 0; transform: scale(.7); }
+    15% { opacity: 1; transform: scale(1.08); }
+    30% { transform: scale(1); }
+    85% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .hint { flex: none; text-align: center; color: var(--muted); font-size: .78rem; margin-top: clamp(6px, 1.4vh, 14px); }
+  @media (max-height: 720px) {
+    .letter { font-size: min(7rem, 15vh); }
+  }
+  @media (max-height: 640px) {
+    .hint { display: none; }
+    .letter { font-size: min(6rem, 12vh); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>צלילי אותיות עבריות</h1>
+    <div class="stats">
+      <span>ניקוד <b id="score">0/0</b></span>
+      <span>רצף <b id="streak">0</b></span>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div class="prompt">איזה צליל הוא שמה של האות הזו?</div>
+    <div class="letter" id="letter" lang="he" dir="rtl">א</div>
+
+    <div class="options" id="options"></div>
+
+    <div class="actions">
+      <button class="primary" id="check" disabled>בדוק תשובה</button>
+      <button class="primary" id="next" disabled>אות הבאה</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+    <div class="praise" id="praise" lang="he" dir="rtl"></div>
+    <div class="hint">טיפ: לחצו על צליל כדי להאזין, ואז בדקו.</div>
+  </div>
+</div>
+<div class="icon-screen" id="iconScreen" aria-hidden="true"></div>
+
+<script src="praises.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var LETTERS = [
+    { letter: "א", name: "Alef",   he: "אָלֶף" },
+    { letter: "ב", name: "Bet",    he: "בֵּית" },
+    { letter: "ג", name: "Gimel",  he: "גִּימֶל" },
+    { letter: "ד", name: "Dalet",  he: "דָּלֶת" },
+    { letter: "ה", name: "He",     he: "הֵא" },
+    { letter: "ו", name: "Vav",    he: "וָו" },
+    { letter: "ז", name: "Zayin",  he: "זַיִן" },
+    { letter: "ח", name: "Het",    he: "חֵית" },
+    { letter: "ט", name: "Tet",    he: "טֵית" },
+    { letter: "י", name: "Yod",    he: "יוֹד" },
+    { letter: "כ", name: "Kaf",    he: "כַּף" },
+    { letter: "ך", name: "Kaf sofit", he: "כַּף סוֹפִית" },
+    { letter: "ל", name: "Lamed",  he: "לָמֶד" },
+    { letter: "מ", name: "Mem",    he: "מֵם" },
+    { letter: "ם", name: "Mem sofit", he: "מֵם סוֹפִית" },
+    { letter: "נ", name: "Nun",    he: "נוּן" },
+    { letter: "ן", name: "Nun sofit", he: "נוּן סוֹפִית" },
+    { letter: "ס", name: "Samekh", he: "סָמֶךְ" },
+    { letter: "ע", name: "Ayin",   he: "עַיִן" },
+    { letter: "פ", name: "Pe",     he: "פֵּא" },
+    { letter: "ף", name: "Pe sofit", he: "פֵּא סוֹפִית" },
+    { letter: "צ", name: "Tsadi",  he: "צַדִּי" },
+    { letter: "ץ", name: "Tsadi sofit", he: "צַדִּי סוֹפִית" },
+    { letter: "ק", name: "Qof",    he: "קוֹף" },
+    { letter: "ר", name: "Resh",   he: "רֵישׁ" },
+    { letter: "ש", name: "Shin",   he: "שִׁין" },
+    { letter: "ת", name: "Tav",    he: "תָּו" }
+  ];
+
+  var PRAISES = window.PRAISES || [];
+
+  var letterEl = document.getElementById("letter");
+  var optionsEl = document.getElementById("options");
+  var checkBtn = document.getElementById("check");
+  var nextBtn = document.getElementById("next");
+  var feedbackEl = document.getElementById("feedback");
+  var scoreEl = document.getElementById("score");
+  var streakEl = document.getElementById("streak");
+  var praiseEl = document.getElementById("praise");
+  var iconScreenEl = document.getElementById("iconScreen");
+
+  var state = { current: null, options: [], selected: -1, answered: false, correct: 0, total: 0, streak: 0, plays: [0, 0, 0, 0], lastPlayed: -1 };
+
+  var SHARP_EAR_ICONS = [
+    "🤯", "🤪", "🥴", "🤡", "🫣", "👀", "🧠", "🤓", "🙈", "🙉",
+    "🙊", "😜", "😝", "😛", "😵", "🤤", "😴", "🥳", "🤩", "😎",
+    "🥸", "🤠", "🤑", "🧐", "🤔", "🤭", "🤫", "🫢", "🫡", "😬",
+    "🙃", "🫠", "🐸", "🦆", "🦥", "🦑", "🐙", "🦨", "🦫", "🦩",
+    "🐲", "🦜", "🐵", "🐒", "🦍", "🦧", "🐷", "🐽", "🐗", "🐰",
+    "🐹", "🐭", "🦔", "🦦", "🦘", "🦡", "🐘", "🦛", "🦏", "🐫",
+    "🦒", "🦌", "🐺", "🦊", "🦝", "🐱", "🐯", "🦁", "🐮", "🐢",
+    "🦎", "🐍", "🐊", "🦂", "🕷️", "🦗", "🐜", "🐝", "🐞", "🦋",
+    "🐌", "🦀", "🍕", "🍔", "🍟", "🌭", "🍿", "🧁", "🍩", "🍭",
+    "🥑", "🍌", "🪄", "🧨", "💥", "🚀", "👽", "🛸", "🎉", "✨"
+  ];
+  var TEST_MODE = /[?&]test=1(?:&|$)/.test(window.location.search || "");
+  var PRAISE_EVERY = TEST_MODE ? 1 : 7;
+
+  var hebrewVoice = null;
+  function pickVoice() {
+    var voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    hebrewVoice = null;
+    for (var i = 0; i < voices.length; i++) {
+      if (/^he/i.test(voices[i].lang)) { hebrewVoice = voices[i]; break; }
+    }
+  }
+  if (window.speechSynthesis) {
+    pickVoice();
+    window.speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  function synthSpeak(text, lang, cancel) {
+    if (!window.speechSynthesis) return;
+    if (cancel !== false) window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    if (hebrewVoice && /^he/i.test(lang)) utter.voice = hebrewVoice;
+    utter.rate = 0.85;
+    window.speechSynthesis.speak(utter);
+  }
+
+  function speak(entry) {
+    if (hebrewVoice) synthSpeak(entry.he, hebrewVoice.lang);
+    else synthSpeak(entry.name, "en-US");
+  }
+
+  var lastPraise = -1;
+  function speakPraise() {
+    var idx;
+    do {
+      idx = Math.floor(Math.random() * PRAISES.length);
+    } while (PRAISES.length > 1 && idx === lastPraise);
+    lastPraise = idx;
+
+    var praise = PRAISES[idx];
+    praiseEl.textContent = praise.he;
+    praiseEl.classList.remove("show");
+    void praiseEl.offsetWidth;
+    praiseEl.classList.add("show");
+
+    if (hebrewVoice) synthSpeak(praise.he, hebrewVoice.lang, false);
+    else synthSpeak(praise.en, "en-US", false);
+  }
+
+  var audioCtx = null;
+  var masterGain = null;
+  function getAudioCtx() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) {
+      audioCtx = new AC();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 1.5;
+      var comp = audioCtx.createDynamicsCompressor();
+      masterGain.connect(comp).connect(audioCtx.destination);
+    }
+    if (audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
+    return audioCtx;
+  }
+
+  function out(ctx) {
+    return masterGain || ctx.destination;
+  }
+
+  function tone(ctx, o) {
+    var t0 = ctx.currentTime + (o.delay || 0);
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(o.f0, t0);
+    if (o.f1 && o.f1 !== o.f0) {
+      if (o.linear) osc.frequency.linearRampToValueAtTime(o.f1, t0 + o.dur);
+      else osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f1), t0 + o.dur);
+    }
+    var vol = o.gain == null ? 0.25 : o.gain;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + Math.min(0.02, o.dur / 2));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+    osc.connect(g).connect(out(ctx));
+    osc.start(t0);
+    osc.stop(t0 + o.dur + 0.03);
+  }
+
+  function vibrato(ctx, o) {
+    var t0 = ctx.currentTime + (o.delay || 0);
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    var lfo = ctx.createOscillator();
+    var lfoGain = ctx.createGain();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(o.f0, t0);
+    lfo.frequency.setValueAtTime(o.lfo || 18, t0);
+    lfoGain.gain.setValueAtTime(o.depth || 40, t0);
+    lfo.connect(lfoGain).connect(osc.frequency);
+    var vol = o.gain == null ? 0.25 : o.gain;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+    osc.connect(g).connect(out(ctx));
+    osc.start(t0);
+    lfo.start(t0);
+    osc.stop(t0 + o.dur + 0.03);
+    lfo.stop(t0 + o.dur + 0.03);
+  }
+
+  function noiseBurst(ctx, o) {
+    var t0 = ctx.currentTime + (o.delay || 0);
+    var len = Math.max(1, Math.ceil(ctx.sampleRate * o.dur));
+    var buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    var src = ctx.createBufferSource();
+    src.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = o.filterType || "bandpass";
+    filter.frequency.setValueAtTime(o.f0, t0);
+    if (o.f1 && o.f1 !== o.f0) filter.frequency.exponentialRampToValueAtTime(Math.max(1, o.f1), t0 + o.dur);
+    filter.Q.value = o.q == null ? 1 : o.q;
+    var g = ctx.createGain();
+    var vol = o.gain == null ? 0.2 : o.gain;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+    src.connect(filter).connect(g).connect(out(ctx));
+    src.start(t0);
+    src.stop(t0 + o.dur + 0.03);
+  }
+
+  var SFX = [
+    function (c) { tone(c, { type: "sine", f0: 1200, f1: 80, dur: 0.55, gain: 0.9 }); tone(c, { type: "triangle", f0: 600, f1: 60, dur: 0.5, gain: 0.4, delay: 0.03 }); },
+    function (c) { tone(c, { type: "sine", f0: 220, f1: 2000, dur: 0.5, gain: 0.8 }); },
+    function (c) { tone(c, { type: "sine", f0: 2000, f1: 220, dur: 0.5, gain: 0.8 }); },
+    function (c) { tone(c, { type: "sine", f0: 700, f1: 50, dur: 0.2, gain: 0.95 }); noiseBurst(c, { filterType: "lowpass", f0: 900, dur: 0.08, gain: 0.5 }); },
+    function (c) { tone(c, { type: "sawtooth", f0: 2600, f1: 90, dur: 0.4, gain: 0.7 }); },
+    function (c) { tone(c, { type: "square", f0: 1046, f1: 1046, dur: 0.12, gain: 0.55 }); tone(c, { type: "square", f0: 1568, f1: 1568, dur: 0.4, gain: 0.55, delay: 0.12 }); },
+    function (c) { tone(c, { type: "square", f0: 523, f1: 523, dur: 0.13, gain: 0.5 }); tone(c, { type: "square", f0: 659, f1: 659, dur: 0.13, gain: 0.5, delay: 0.12 }); tone(c, { type: "square", f0: 784, f1: 784, dur: 0.13, gain: 0.5, delay: 0.24 }); tone(c, { type: "square", f0: 1046, f1: 1046, dur: 0.5, gain: 0.55, delay: 0.36 }); },
+    function (c) { noiseBurst(c, { filterType: "bandpass", f0: 2000, f1: 120, dur: 0.4, gain: 0.85, q: 0.7 }); tone(c, { type: "sine", f0: 300, f1: 60, dur: 0.3, gain: 0.5 }); },
+    function (c) { noiseBurst(c, { filterType: "bandpass", f0: 180, f1: 5000, dur: 0.65, gain: 0.6, q: 1.1 }); },
+    function (c) { vibrato(c, { type: "sawtooth", f0: 420, dur: 0.45, lfo: 26, depth: 160, gain: 0.65 }); },
+    function (c) { vibrato(c, { type: "sine", f0: 180, dur: 0.8, lfo: 11, depth: 170, gain: 0.75 }); },
+    function (c) { tone(c, { type: "sawtooth", f0: 220, f1: 55, dur: 0.45, gain: 0.75 }); tone(c, { type: "sine", f0: 110, f1: 50, dur: 0.4, gain: 0.5, delay: 0.03 }); }
+  ];
+
+  var lastSfx = -1;
+  function playWackySound() {
+    var ctx = getAudioCtx();
+    if (!ctx) return;
+    var idx;
+    do {
+      idx = Math.floor(Math.random() * SFX.length);
+    } while (SFX.length > 1 && idx === lastSfx);
+    lastSfx = idx;
+    SFX[idx](ctx);
+  }
+
+  var lastIcon = -1;
+  function showSharpEar() {
+    var idx;
+    do {
+      idx = Math.floor(Math.random() * SHARP_EAR_ICONS.length);
+    } while (SHARP_EAR_ICONS.length > 1 && idx === lastIcon);
+    lastIcon = idx;
+
+    iconScreenEl.textContent = SHARP_EAR_ICONS[idx];
+    iconScreenEl.classList.remove("show");
+    void iconScreenEl.offsetWidth;
+    iconScreenEl.classList.add("show");
+    playWackySound();
+  }
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function speakerIcon() {
+    return '<span class="play-badge" aria-hidden="true">' +
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">' +
+      '<path d="M4 9v6h4l5 4V5L8 9H4z"/>' +
+      '<path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<path d="M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '</svg></span>';
+  }
+
+  function newRound() {
+    var pool = LETTERS;
+    var choice;
+    do {
+      choice = pool[Math.floor(Math.random() * pool.length)];
+    } while (state.current && pool.length > 1 && choice.letter === state.current.letter);
+
+    var distractors = shuffle(pool.filter(function (l) { return l.letter !== choice.letter; })).slice(0, 3);
+    var opts = shuffle([choice].concat(distractors));
+
+    state.current = choice;
+    state.options = opts;
+    state.selected = -1;
+    state.answered = false;
+    state.plays = [0, 0, 0, 0];
+    state.lastPlayed = -1;
+
+    letterEl.textContent = choice.letter;
+
+    optionsEl.innerHTML = "";
+    opts.forEach(function (opt, idx) {
+      var btn = document.createElement("button");
+      btn.className = "option";
+      btn.type = "button";
+      btn.innerHTML = speakerIcon() + '<span class="opt-label">צליל ' + (idx + 1) + '</span>';
+      btn.addEventListener("click", function () { selectOption(idx); });
+      optionsEl.appendChild(btn);
+    });
+
+    feedbackEl.textContent = "";
+    feedbackEl.className = "feedback";
+    praiseEl.textContent = "";
+    praiseEl.className = "praise";
+    iconScreenEl.textContent = "";
+    iconScreenEl.classList.remove("show");
+    checkBtn.disabled = true;
+    nextBtn.disabled = true;
+  }
+
+  function optionButtons() {
+    return optionsEl.querySelectorAll(".option");
+  }
+
+  function selectOption(idx) {
+    if (state.answered) return;
+    state.selected = idx;
+    state.plays[idx]++;
+    state.lastPlayed = idx;
+    var buttons = optionButtons();
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].classList.toggle("selected", i === idx);
+      buttons[i].disabled = false;
+    }
+    checkBtn.disabled = false;
+    speak(state.options[idx]);
+  }
+
+  function checkAnswer() {
+    if (state.answered || state.selected < 0) return;
+    state.answered = true;
+    var buttons = optionButtons();
+    var correctIdx = state.options.indexOf(state.current);
+    var isCorrect = state.selected === correctIdx;
+
+    state.total++;
+    if (isCorrect) { state.correct++; state.streak++; }
+    else { state.streak = 0; }
+
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].disabled = true;
+      buttons[i].classList.remove("selected");
+      if (i === correctIdx) buttons[i].classList.add("correct");
+      else if (i === state.selected) buttons[i].classList.add("wrong");
+    }
+
+    feedbackEl.textContent = isCorrect
+      ? "נכון! זו " + state.current.he + "."
+      : "לא בדיוק. הצליל הנכון הוא " + state.current.he + ".";
+    feedbackEl.className = "feedback " + (isCorrect ? "good" : "bad");
+
+    scoreEl.textContent = state.correct + "/" + state.total;
+    streakEl.textContent = state.streak;
+    checkBtn.disabled = true;
+    nextBtn.disabled = false;
+    nextBtn.focus();
+
+    if (isCorrect && state.streak > 0 && state.streak % PRAISE_EVERY === 0) speakPraise();
+
+    var sharpEar = isCorrect && state.lastPlayed === correctIdx && state.plays[correctIdx] === 1;
+    if (sharpEar) showSharpEar();
+  }
+
+  checkBtn.addEventListener("click", checkAnswer);
+  nextBtn.addEventListener("click", newRound);
+
+  function preventDefault(e) { e.preventDefault(); }
+  if (typeof document.addEventListener === "function") {
+    document.addEventListener("wheel", function (e) {
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")) e.preventDefault();
+    });
+    document.addEventListener("gesturestart", preventDefault, { passive: false });
+    document.addEventListener("gesturechange", preventDefault, { passive: false });
+    document.addEventListener("dblclick", preventDefault);
+    document.addEventListener("touchmove", function (e) {
+      if (e.touches && e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  }
+
+  newRound();
+})();
+</script>
+</body>
+</html>
